@@ -3,11 +3,13 @@ package main
 import (
 	"log"
 	"os"
+
 	"payment-service/internal/config"
-	"payment-service/internal/controller"
+	"payment-service/internal/controller" 
 	"payment-service/internal/model"
+	"payment-service/internal/rabbitmq"
 	"payment-service/internal/repository"
-	"payment-service/internal/service"
+	"payment-service/internal/service" 
 
 	"github.com/gin-gonic/gin"
 	"github.com/joho/godotenv"
@@ -15,23 +17,37 @@ import (
 
 func main() {
 	godotenv.Load()
+
 	db := config.ConnectDB()
 
-	db.AutoMigrate(&model.PaymentSession{})
+	db.AutoMigrate(&model.Payment{})
 
-	service.StartPaymentExpiryWorker(db)
-
-	paymentRepo := repository.NewPaymentRepository(db)
-	paymentService := service.NewPaymentService(paymentRepo, db)
-	paymentController := controller.NewPaymentController(paymentService)
-
-	r := gin.Default()
-	v1 := r.Group("/api/v1")
-	{
-		v1.POST("/transactions/pay", paymentController.Pay)
+	rabbitURL := os.Getenv("RABBITMQ_URL")
+	if rabbitURL == "" {
+		rabbitURL = "amqp://guest:guest@localhost:5672/"
 	}
 
-	port := os.Getenv("PAYMENT_PORT")
+	go func() {
+		log.Println("[Payment Service] Memulai RabbitMQ Consumer worker...")
+		rabbitmq.StartConsumer(rabbitURL, db)
+	}()
+	
+	paymentRepo := repository.NewPaymentRepository(db)
+	paymentService := service.NewPaymentService(paymentRepo) 
+	paymentController := controller.NewPaymentController(paymentService, db)
+
+	r := gin.Default()
+
+	v1 := r.Group("/api/v1")
+	{
+		v1.GET("/health", func(ctx *gin.Context) {
+			ctx.JSON(200, gin.H{"status": "Payment Service is running"})
+		})
+
+		v1.GET("/payments/:id", paymentController.GetPaymentStatus)
+	}
+
+	port := os.Getenv("PORT")
 	if port == "" {
 		port = "8081"
 	}

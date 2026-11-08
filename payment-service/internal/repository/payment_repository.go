@@ -2,13 +2,12 @@ package repository
 
 import (
 	"payment-service/internal/model"
-
 	"gorm.io/gorm"
 )
 
 type PaymentRepository interface {
-	Create(payment *model.PaymentSession) error
-	FindByID(id string) (*model.PaymentSession, error)
+	Create(payment *model.Payment) error
+	FindByPaymentID(paymentID string) (*model.Payment, error)
 }
 
 type paymentRepository struct {
@@ -19,12 +18,15 @@ func NewPaymentRepository(db *gorm.DB) PaymentRepository {
 	return &paymentRepository{db: db}
 }
 
-func (r *paymentRepository) Create(payment *model.PaymentSession) error {
+func (r *paymentRepository) Create(payment *model.Payment) error {
 	return r.db.Create(payment).Error
 }
 
-func (r *paymentRepository) FindByID(id string) (*model.PaymentSession, error) {
-	var payment model.PaymentSession
-	err := r.db.Where("id = ?", id).First(&payment).Error
-	return &payment, err
+func (r *paymentRepository) FindByPaymentID(paymentID string) (*model.Payment, error) {
+	var payment model.Payment
+	err := r.db.First(&payment, "payment_id = ?", paymentID).Error
+	if err != nil {
+		return nil, err
+	}
+	return &payment, nil
 }

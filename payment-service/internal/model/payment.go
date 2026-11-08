@@ -2,21 +2,18 @@ package model
 
 import (
 	"time"
-
-	"github.com/google/uuid"
 )
 
-type PaymentSession struct {
-	ID          uuid.UUID `gorm:"type:uuid;default:gen_random_uuid();primaryKey"`
-	UserID      uuid.UUID `gorm:"type:uuid;not null"`
-	MerchantID  string    `gorm:"type:varchar(100);not null"`
-	Amount      float64   `gorm:"type:numeric(18,2);not null"`
-	Status      string    `gorm:"type:varchar(20);not null;default:'pending'"` // pending, completed, expired
-	Description string    `gorm:"type:text"`
-	CreatedAt   time.Time `gorm:"autoCreateTime"`
-	ExpiresAt   time.Time `gorm:"not null"`
+type Payment struct {
+	PaymentID string    `gorm:"primaryKey" json:"payment_id"`
+	UserID    string    `json:"user_id"`
+	MerchantID string   `json:"merchant_id"`
+	Amount    float64   `json:"amount"`
+	Status    string    `json:"status"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
-func (PaymentSession) TableName() string {
+func (Payment) TableName() string {
 	return "payment_sessions"
 }
